@@ -1,0 +1,90 @@
+from pathlib import Path
+
+from sklearn.neighbors import KernelDensity
+import geopandas as gpd
+import numpy as np
+import matplotlib.pyplot as plt
+
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = PROJECT_DIR / "data"
+
+deaths_path = DATA_DIR / "snow2" / "deaths_by_bldg.shp"
+pumps_path = DATA_DIR / "snow6" / "pumps.shp"
+
+# print("Deaths path:", deaths_path)
+# print("Exists:", deaths_path.exists())
+
+# print("Pumps path:", pumps_path)
+# print("Exists:", pumps_path.exists())
+
+deaths = gpd.read_file(deaths_path)
+pumps = gpd.read_file(pumps_path)
+
+# deaths = gpd.read_file("../data/snow2/deaths_by_bldg.shp")
+# pumps = gpd.read_file("../data/snow6/pumps.shp")
+
+X = deaths[["COORD_X", "COORD_Y"]].to_numpy()
+weights = deaths["deaths"].to_numpy()
+
+pump_X = pumps[["COORD_X", "COORD_Y"]].to_numpy()
+
+kde = KernelDensity(
+    kernel="gaussian",
+    bandwidth=25
+)
+
+kde.fit(X, sample_weight=weights)
+
+x_min = min(X[:, 0].min(), pump_X[:, 0].min())
+x_max = max(X[:, 0].max(), pump_X[:, 0].max())
+
+y_min = min(X[:, 1].min(), pump_X[:, 1].min())
+y_max = max(X[:, 1].max(), pump_X[:, 1].max())
+
+padding = 30
+
+x_min -= padding
+x_max += padding
+y_min -= padding
+y_max += padding
+
+xx, yy = np.meshgrid(
+    np.linspace(x_min, x_max, 100),
+    np.linspace(y_min, y_max, 100)
+)
+
+grid_points = np.column_stack([
+    xx.ravel(),
+    yy.ravel()
+])
+
+log_density = kde.score_samples(grid_points)
+
+density = np.exp(log_density)
+
+density = density.reshape(xx.shape)
+
+plt.contourf(xx, yy, density)
+
+plt.scatter(
+    X[:, 0],
+    X[:, 1],
+    s=5
+)
+
+plt.contourf(xx, yy, density)
+
+plt.scatter(
+    X[:, 0],
+    X[:, 1],
+    s=5
+)
+
+plt.scatter(
+    pump_X[:, 0],
+    pump_X[:, 1],
+    marker="x",
+    s=80
+)
+
+plt.show()

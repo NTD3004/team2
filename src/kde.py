@@ -1,20 +1,36 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
-
 from data_utils import load_data, extract_coordinates
 
+def estimate_density(point, X, weights, bandwidth, kernel):
+    D = X.shape[1]
 
-def fit_kde(X, weights, bandwidth=50):
-    kde = KernelDensity(
-        kernel="gaussian",
-        bandwidth=bandwidth
+    # (x - x_n) / h for every x_n
+    u = (point - X) / bandwidth
+
+    # Evaluate k(u_n) for all observations
+    kernel_values = kernel(u)
+
+    # Weighted sum
+    total = np.sum(weights * kernel_values)
+
+    return total / (
+        np.sum(weights) * bandwidth ** D
     )
 
-    kde.fit(X, sample_weight=weights)
+def gaussian_kernel(u):
+    D = u.shape[1]
 
-    return kde
+    squared_distance = np.sum(u ** 2, axis=1)
 
+    return (
+        (2 * np.pi) ** (-D / 2)
+        * np.exp(-0.5 * squared_distance)
+    )
+
+def box_kernel(u):
+    return np.all(np.abs(u) <= 0.5, axis=1).astype(float)
 
 def create_grid(X, pump_X, resolution=100, padding=30):
     x_min = min(X[:, 0].min(), pump_X[:, 0].min()) - padding
@@ -28,30 +44,52 @@ def create_grid(X, pump_X, resolution=100, padding=30):
         np.linspace(y_min, y_max, resolution)
     )
 
-    grid_points = np.column_stack([
-        xx.ravel(),
-        yy.ravel()
-    ])
+    return xx, yy
 
-    return xx, yy, grid_points
+def run_kde(kernel_type="gaussian"):
+    print("Running KDE with kernel:", kernel_type)
+    deaths, pumps = load_data()
 
-
-def evaluate_kde(kde, grid_points, shape):
-    log_density = kde.score_samples(grid_points)
-    density = np.exp(log_density)
-
-    return density.reshape(shape)
-
-
-def plot_kde(xx, yy, density, X, pump_X):
-    plt.contourf(xx, yy, density)
-
-    plt.scatter(
-        X[:, 0],
-        X[:, 1],
-        s=8
+    X, pump_X, weights = extract_coordinates(
+        deaths,
+        pumps
     )
 
+    xx, yy = create_grid(
+        X,
+        pump_X
+    )
+
+    density = np.zeros(xx.shape)
+
+    for i in range(xx.shape[0]):
+        for j in range(xx.shape[1]):
+            point = np.array([
+                xx[i, j],
+                yy[i, j]
+            ])
+
+            if (kernel_type == "gaussian"):
+                density[i, j] = estimate_density(
+                    point,
+                    X,
+                    weights,
+                    bandwidth=50,
+                    kernel=gaussian_kernel
+                )
+            else:
+                density[i, j] = estimate_density(
+                    point,
+                    X,
+                    weights,
+                    bandwidth=50,
+                    kernel=box_kernel
+                )
+
+    
+    plt.contourf(xx, yy, density)
+
+    plt.scatter(X[:, 0], X[:, 1], s=8)
     plt.scatter(
         pump_X[:, 0],
         pump_X[:, 1],
@@ -66,35 +104,4 @@ def plot_kde(xx, yy, density, X, pump_X):
     plt.show()
 
 
-def run_kde():
-    deaths, pumps = load_data()
-
-    X, pump_X, weights = extract_coordinates(
-        deaths,
-        pumps
-    )
-
-    kde = fit_kde(
-        X,
-        weights,
-        bandwidth=50
-    )
-
-    xx, yy, grid_points = create_grid(
-        X,
-        pump_X
-    )
-
-    density = evaluate_kde(
-        kde,
-        grid_points,
-        xx.shape
-    )
-
-    plot_kde(
-        xx,
-        yy,
-        density,
-        X,
-        pump_X
-    )
+    

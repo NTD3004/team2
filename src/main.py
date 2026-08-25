@@ -12,10 +12,17 @@ def main():
         help="Method to run"
     )
 
+    parser.add_argument(
+        "--kernel",
+        choices=["gaussian", "box"],
+        default="gaussian",
+        help="Kernel used by KDE (default: gaussian)"
+    )
+
     args = parser.parse_args()
 
     if args.method == "kde":
-        run_kde()
+        run_kde(args.kernel)
 
     # elif args.method == "base":
     #     run_baseline()

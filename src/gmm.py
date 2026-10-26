@@ -1,4 +1,3 @@
-import argparse
 import warnings
 
 import numpy as np
@@ -6,14 +5,14 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from scipy.special import logsumexp
 
-from data_utils import load_data, extract_coordinates
+from data_utils import load_data, prepare_analysis_data
 from kmeans import fit_kmeans
 
 
-def initialize_from_kmeans(X, weights, k, reg_covar):
+def initialize_from_kmeans(X, weights, k, reg_covar, n_init=50):
     """Initialize means, full covariances, and mixing coefficients."""
-    # Reuse your existing function (50 K-means initializations).
-    kmeans_model = fit_kmeans(X, weights, k)
+    # Use the configured number of K-means initializations.
+    kmeans_model = fit_kmeans(X, weights, k, n_init=n_init)
     means = kmeans_model.cluster_centers_.copy()
     covariances = np.empty((k, X.shape[1], X.shape[1]))
     cluster_weights = np.zeros(k)
@@ -100,7 +99,7 @@ def maximization_step(X, weights, responsibilities, reg_covar):
 
 
 def fit_gmm(
-    X, weights, k=8, max_iter=300, tol=1e-6, reg_covar=1e-6, verbose=True
+    X, weights, k=8, max_iter=300, tol=1e-6, reg_covar=1e-6, verbose=True, n_init=50
 ):
     """Fit weighted GMM with full covariances using K-means initialization.
 
@@ -125,7 +124,7 @@ def fit_gmm(
         raise ValueError("max_iter, tol, and reg_covar must be positive.")
 
     means, covariances, mixing_coefficients = initialize_from_kmeans(
-        X, weights, k, reg_covar
+        X, weights, k, reg_covar, n_init=n_init
     )
     initial_parameters = {
         "means": means.copy(),
@@ -236,23 +235,13 @@ def plot_gmm(X, weights, pump_X, result, principal, nearest_pump):
     fig.tight_layout()
 
 
-def run_gmm(k=8, max_iter=300, tol=1e-6, reg_covar=1e-6):
-    deaths, pumps = load_data()
-    X, pump_X, weights = extract_coordinates(deaths, pumps)
-    X = np.asarray(X, dtype=float)
-    weights = np.asarray(weights, dtype=float)
-    pump_X = np.asarray(pump_X, dtype=float)
-    if (not np.isfinite(X).all() or not np.isfinite(weights).all()
-            or np.any(weights < 0)):
-        raise ValueError("Clean invalid coordinates/death counts before fitting.")
-    if (pump_X.ndim != 2 or pump_X.shape[1] != 2 or len(pump_X) == 0
-            or not np.isfinite(pump_X).all()):
-        raise ValueError("Pump coordinates must be a nonempty finite (P,2) matrix.")
-    mask = weights > 0
-    X, weights = X[mask], weights[mask]
-    print(f"Fitting K={k} components to {len(X)} houses; {weights.sum():g} deaths.")
+def run_gmm(k=8, max_iter=300, tol=1e-6, reg_covar=1e-6,
+            use_death_weights=True, n_init=50, data=None):
+    deaths, pumps = load_data() if data is None else data
+    X, pump_X, weights = prepare_analysis_data(deaths, pumps, use_death_weights)
+    print(f"Fitting K={k} components to {len(X)} houses; {weights.sum():g} total weight.")
     print("K is supplied for comparison, not independently selected for GMM.")
-    result = fit_gmm(X, weights, k, max_iter, tol, reg_covar)
+    result = fit_gmm(X, weights, k, max_iter, tol, reg_covar, n_init=n_init)
 
     principal = int(np.argmax(result["effective_deaths"]))
     distances = np.linalg.norm(pump_X - result["means"][principal], axis=1)
@@ -264,12 +253,12 @@ def run_gmm(k=8, max_iter=300, tol=1e-6, reg_covar=1e-6):
     print("Final Gaussian means:\n", result["means"])
     print("Final covariance matrices:\n", result["covariances"])
     print("Final mixing coefficients:", result["mixing_coefficients"])
-    print("Effective deaths per component (soft):", result["effective_deaths"])
-    print("Deaths per displayed cluster (hard):", hard_deaths)
+    print("Effective weight per component (soft):", result["effective_deaths"])
+    print("Weight per displayed cluster (hard):", hard_deaths)
     print("Principal component (zero-based):", principal)
     print("Principal Gaussian mean:", result["means"][principal])
-    print("Principal effective death total:", result["effective_deaths"][principal])
-    print("Principal share of deaths:",
+    print("Principal effective weight total:", result["effective_deaths"][principal])
+    print("Principal share of total weight:",
           f"{100 * result['effective_deaths'][principal] / weights.sum():.2f}%")
     print("Nearest pump index (not a verified pump name):", nearest_pump)
     print("Distance from principal mean to nearest pump:",
@@ -282,7 +271,6 @@ def run_gmm(k=8, max_iter=300, tol=1e-6, reg_covar=1e-6):
     plot_gmm(X, weights, pump_X, result, principal, nearest_pump)
     plt.show()
     return result
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)

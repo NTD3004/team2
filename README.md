@@ -52,3 +52,28 @@ Any failed samples are reported and excluded from summary denominators.
 %run src/gmm_bootstrap.py --k 8 --samples 100 --max-iter 1000
 
 
+## Interactive demo
+
+Open **Demo.ipynb** in Jupyter and run its cell from the project root.
+Install `requirements.txt` first (or rebuild with `docker compose up --build`).
+
+Select a house, edit coordinates/death counts or uncheck **Include house**, then
+click **Apply house edit**. The filter panel is ordered as minimum deaths,
+coordinate-bounds toggle, X bounds, Y bounds, and **Preview selection**.
+**Run on selection** uses the applied edits and filters; **Reset all data**
+restores the original houses. Edits stay in memory and never overwrite source data.
+All models fit positive-death houses only. Disabling death weights gives each
+such house unit weight. Initializations apply to K-means and GMM's K-means seed.
+KDE selects among the comma-separated bandwidth candidates; its demo bootstrap
+count defaults to zero for faster interaction, and can be increased.
+
+In Colab, first clone this repository (including `src/` and `data/`), then run:
+
+```python
+%cd /content/team2
+%pip install -q -r requirements.txt
+%run Demo.ipynb
+```
+
+Alternatively, upload Demo.ipynb to Colab and run its cell after that setup.
+Commit and push the restored files before cloning them in Colab.

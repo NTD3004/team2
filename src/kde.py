@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import logsumexp
 
-from data_utils import load_data, extract_coordinates
+from data_utils import load_data, prepare_analysis_data
 
 
 def gaussian_kernel(u):
@@ -123,13 +123,14 @@ def bootstrap_kde(X, weights, pump_X, bandwidths, kernel_type, xx, yy,
     return records
 
 
-def run_kde(kernel_type="gaussian", bandwidths=None, samples=100, seed=42, resolution=100):
+def run_kde(kernel_type="gaussian", bandwidths=None, samples=100, seed=42, resolution=100,
+            use_death_weights=True, data=None):
     if samples < 0:
         raise ValueError("Bootstrap sample count cannot be negative.")
     if bandwidths is None:
         bandwidths = np.geomspace(5, 500, 25)
-    deaths, pumps = load_data()
-    X, pump_X, weights = extract_coordinates(deaths, pumps)
+    deaths, pumps = load_data() if data is None else data
+    X, pump_X, weights = prepare_analysis_data(deaths, pumps, use_death_weights)
     X, weights = validate_data(X, weights)
     pump_X = np.asarray(pump_X, dtype=float)
     if (pump_X.ndim != 2 or pump_X.shape[1] != 2 or not len(pump_X)

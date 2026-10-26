@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 
-from data_utils import load_data, extract_coordinates
+from data_utils import load_data, prepare_analysis_data
 from kmeans_plot import plot_clusters
 
 def evaluate_bootstrap_stability(
@@ -12,7 +12,8 @@ def evaluate_bootstrap_stability(
     reference_model,
     k,
     number_of_samples=100,
-    random_state=42
+    random_state=42,
+    n_init=50
 ):
     """
     Evaluate stability by resampling houses with replacement.
@@ -74,7 +75,7 @@ def evaluate_bootstrap_stability(
         bootstrap_model = KMeans(
             n_clusters=k,
             init="k-means++",
-            n_init=20,
+            n_init=n_init,
             random_state=(
                 random_state
                 + bootstrap_number
@@ -189,12 +190,12 @@ def evaluate_bootstrap_stability(
     )
 
     print(
-        "Mean principal-cluster death total:",
+        "Mean principal-cluster weight total:",
         f"{principal_death_totals.mean():.3f}"
     )
 
     print(
-        "Standard deviation of death total:",
+        "Standard deviation of weight total:",
         f"{principal_death_totals.std():.3f}"
     )
 
@@ -423,7 +424,7 @@ def demonstrate_initializations(
     return objective_values
 
 
-def fit_kmeans(X, weights, k):
+def fit_kmeans(X, weights, k, n_init=50):
     """
     Fit weighted K-means for a specified number of clusters.
     """
@@ -431,7 +432,7 @@ def fit_kmeans(X, weights, k):
     model = KMeans(
         n_clusters=k,
         init="k-means++",
-        n_init=50,
+        n_init=n_init,
         random_state=42
     )
 
@@ -487,7 +488,8 @@ def select_k(
     X,
     weights,
     max_k=32,
-    small_change=2.0
+    small_change=2.0,
+    n_init=50
 ):
     """
     First evaluate k = 1, 2, 4, 8, ...
@@ -524,7 +526,8 @@ def select_k(
         model = fit_kmeans(
             X,
             weights,
-            current_k
+            current_k,
+            n_init=n_init
         )
 
         models[current_k] = model
@@ -596,7 +599,8 @@ def select_k(
             models[middle] = fit_kmeans(
                 X,
                 weights,
-                middle
+                middle,
+                n_init=n_init
             )
 
             radii[middle] = calculate_average_radius(
@@ -609,7 +613,8 @@ def select_k(
             models[right] = fit_kmeans(
                 X,
                 weights,
-                right
+                right,
+                n_init=n_init
             )
 
             radii[right] = calculate_average_radius(
@@ -759,7 +764,7 @@ def plot_k_selection(
     plt.tight_layout()
 
 
-def run_kmeans(k=None):
+def run_kmeans(k=None, use_death_weights=True, n_init=50, data=None):
     """
     Run the complete weighted K-means analysis.
 
@@ -768,26 +773,17 @@ def run_kmeans(k=None):
     by the trial and error procedure is used.
     """
 
-    deaths, pumps = load_data()
+    deaths, pumps = load_data() if data is None else data
 
-    X, pump_X, weights = extract_coordinates(
-        deaths,
-        pumps
-    )
-
-    # Houses with zero recorded deaths make no contribution
-    # to mortality clustering.
-    mask = weights > 0
-
-    X = X[mask]
-    weights = weights[mask]
+    X, pump_X, weights = prepare_analysis_data(deaths, pumps, use_death_weights)
 
     # This is the value suggested by the trial and error procedure.
     recommended_k, models, radii = select_k(
         X,
         weights,
         max_k=32,
-        small_change=2.0
+        small_change=2.0,
+        n_init=n_init
     )
 
     # A manually supplied k takes precedence.
@@ -830,7 +826,8 @@ def run_kmeans(k=None):
         model = fit_kmeans(
             X,
             weights,
-            final_k
+            final_k,
+            n_init=n_init
         )
 
     labels = model.labels_
@@ -872,7 +869,7 @@ def run_kmeans(k=None):
     print("Selected k:", final_k)
 
     print(
-        "Deaths in each cluster:",
+        "Weight in each cluster:",
         cluster_deaths
     )
 
@@ -882,12 +879,12 @@ def run_kmeans(k=None):
     )
 
     print(
-        "Deaths in principal cluster:",
+        "Weight in principal cluster:",
         principal_deaths
     )
 
     print(
-        "Percentage of all deaths:",
+        "Percentage of total weight:",
         f"{principal_percentage:.2f}%"
     )
 
@@ -921,7 +918,7 @@ def run_kmeans(k=None):
         X=X,
         weights=weights,
         k=final_k,
-        number_of_runs=50
+        number_of_runs=n_init
     )
 
     bootstrap_results = (
@@ -932,7 +929,8 @@ def run_kmeans(k=None):
             reference_model=model,
             k=final_k,
             number_of_samples=100,
-            random_state=42
+            random_state=42,
+            n_init=n_init
         )
     )
 

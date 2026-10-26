@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.neighbors import KernelDensity
-from data_utils import load_data, extract_coordinates
+from data_utils import load_data, prepare_analysis_data
 
 def estimate_density(point, X, weights, bandwidth, kernel):
     D = X.shape[1]
@@ -46,13 +45,14 @@ def create_grid(X, pump_X, resolution=100, padding=30):
 
     return xx, yy
 
-def run_kde(kernel_type="gaussian"):
+def run_kde(kernel_type="gaussian", use_death_weights=True, bandwidth=50):
     print("Running KDE with kernel:", kernel_type)
     deaths, pumps = load_data()
 
-    X, pump_X, weights = extract_coordinates(
+    X, pump_X, weights = prepare_analysis_data(
         deaths,
-        pumps
+        pumps,
+        use_death_weights
     )
 
     xx, yy = create_grid(
@@ -74,7 +74,7 @@ def run_kde(kernel_type="gaussian"):
                     point,
                     X,
                     weights,
-                    bandwidth=50,
+                    bandwidth=bandwidth,
                     kernel=gaussian_kernel
                 )
             else:
@@ -82,12 +82,14 @@ def run_kde(kernel_type="gaussian"):
                     point,
                     X,
                     weights,
-                    bandwidth=50,
+                    bandwidth=bandwidth,
                     kernel=box_kernel
                 )
 
     
-    plt.contourf(xx, yy, density)
+    contour = plt.contourf(xx, yy, density, levels=20)
+    plt.colorbar(contour, label="Probability density (per square metre)")
+    plt.gca().set_aspect("equal", adjustable="box")
 
     plt.scatter(X[:, 0], X[:, 1], s=8)
     plt.scatter(

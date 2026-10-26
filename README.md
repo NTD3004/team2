@@ -44,3 +44,30 @@ K-means assignments and spread ellipses, GMM assignments and covariance ellipses
 and KDE density contours. A useful next addition is to mark the KDE density maximum
 and its nearest pump, alongside the principal K-means centroid and GMM mean.
 These summarize different properties: a density peak versus a component center.
+
+## Interactive house data demo
+
+Run `docker compose up --build`, open Jupyter, and open **Demo.ipynb** from
+the project root. Run its cell to display the editor. It uses
+[ipywidgets](https://ipywidgets.readthedocs.io/en/latest/reference/ipywidgets.html).
+For an existing local environment, install the updated `requirements.txt` first.
+
+1. Select a house by ID/row, edit its X/Y coordinates or death count, and click
+   **Apply house edit**. Uncheck **Include house** to exclude that observation.
+2. Set a minimum death count and optionally enable coordinate bounds. Click
+   **Preview selection** to see the selected houses, totals, and map.
+3. Choose a method and its settings, then click **Run on selection**. Model runs
+   use the applied edits and current filters; zero-death houses are excluded
+   from fitting in both weighting modes. K and initializations apply to K-means
+   and GMM; regularization applies to GMM; bandwidth applies to KDE.
+4. Click **Reset all data** to restore the original houses and clear filters.
+
+Edits are kept only in the notebook session: the source shapefiles are never
+written. Pending house edits require **Apply house edit** before running.
+Changing applied data, filters, or model settings clears old results.
+The preview table shows at most 100 rows; fitting uses the entire selection.
+K-means retains its full initialization experiment and 100 bootstrap samples,
+so it can take longer than the other methods. This demo requires a live Jupyter
+kernel; a static notebook export cannot execute its controls.
+
+Validation: `python -m unittest discover -s tests -v`.

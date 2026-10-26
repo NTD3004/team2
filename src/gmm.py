@@ -236,8 +236,8 @@ def plot_gmm(X, weights, pump_X, result, principal, nearest_pump):
 
 
 def run_gmm(k=8, max_iter=300, tol=1e-6, reg_covar=1e-6,
-            use_death_weights=True, n_init=50):
-    deaths, pumps = load_data()
+            use_death_weights=True, n_init=50, data=None):
+    deaths, pumps = load_data() if data is None else data
     X, pump_X, weights = prepare_analysis_data(deaths, pumps, use_death_weights)
     print(f"Fitting K={k} components to {len(X)} houses; {weights.sum():g} total weight.")
     print("K is supplied for comparison, not independently selected for GMM.")

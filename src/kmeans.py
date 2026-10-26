@@ -764,7 +764,7 @@ def plot_k_selection(
     plt.tight_layout()
 
 
-def run_kmeans(k=None, use_death_weights=True, n_init=50):
+def run_kmeans(k=None, use_death_weights=True, n_init=50, data=None):
     """
     Run the complete weighted K-means analysis.
 
@@ -773,7 +773,7 @@ def run_kmeans(k=None, use_death_weights=True, n_init=50):
     by the trial and error procedure is used.
     """
 
-    deaths, pumps = load_data()
+    deaths, pumps = load_data() if data is None else data
 
     X, pump_X, weights = prepare_analysis_data(deaths, pumps, use_death_weights)
 

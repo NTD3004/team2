@@ -45,9 +45,9 @@ def create_grid(X, pump_X, resolution=100, padding=30):
 
     return xx, yy
 
-def run_kde(kernel_type="gaussian", use_death_weights=True, bandwidth=50):
+def run_kde(kernel_type="gaussian", use_death_weights=True, bandwidth=50, data=None):
     print("Running KDE with kernel:", kernel_type)
-    deaths, pumps = load_data()
+    deaths, pumps = load_data() if data is None else data
 
     X, pump_X, weights = prepare_analysis_data(
         deaths,
